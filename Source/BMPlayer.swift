@@ -11,7 +11,7 @@ import SnapKit
 import MediaPlayer
 
 /// BMPlayerDelegate to obserbe player state
-public protocol BMPlayerDelegate : class {
+public protocol BMPlayerDelegate : AnyObject {
     func bmPlayer(player: BMPlayer, playerStateDidChange state: BMPlayerState)
     func bmPlayer(player: BMPlayer, loadedTimeDidChange loadedDuration: TimeInterval, totalDuration: TimeInterval)
     func bmPlayer(player: BMPlayer, playTimeDidChange currentTime : TimeInterval, totalTime: TimeInterval)
@@ -35,6 +35,8 @@ open class BMPlayer: UIView {
     open weak var delegate: BMPlayerDelegate?
     
     open var backBlock:((Bool) -> Void)?
+    
+    open var downloadBlock:((String) -> Void)?
     
     /// Gesture to change volume / brightness
     open var panGesture: UIPanGestureRecognizer!
@@ -228,6 +230,23 @@ open class BMPlayer: UIView {
         return nil
     }
     
+    open func downloadProcess(percent: Float) {
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // download completed when percent is 1.0
+            if percent == 1.0 {
+                self.controlView.downloadButton.isHidden = false
+                self.controlView.downloadProgressView.isHidden = true
+                self.controlView.isDownloading = false
+                self.controlView.downloadProgressView.progress = 0
+            } else {
+                self.controlView.downloadProgressView.progress = CGFloat(percent)
+            }
+        }
+    }
+    
     // MARK: - Action Response
     
     @objc fileprivate func panDirection(_ pan: UIPanGestureRecognizer) {
@@ -368,7 +387,7 @@ open class BMPlayer: UIView {
         preparePlayer()
     }
     
-    @available(*, deprecated:3.0, message:"Use newer init(customControlView:_)")
+    @available(*, deprecated, message:"Use newer init(customControlView:_)")
     public convenience init(customControllView: BMPlayerControlView?) {
         self.init(customControlView: customControllView)
     }
@@ -542,6 +561,12 @@ extension BMPlayer: BMPlayerControlViewDelegate {
                 
             case .fullscreen:
                 fullScreenButtonPressed()
+                
+            case .download:
+                controlView.isDownloading = true
+                controlView.downloadProgressView.isHidden = false
+                controlView.controlViewAnimation(isShow: true)
+                downloadBlock?(resource.definitions[currentDefinition].url.absoluteString)
                 
             default:
                 print("[Error] unhandled Action")

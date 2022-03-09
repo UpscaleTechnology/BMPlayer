@@ -20,6 +20,7 @@
 		6A5B61DB1EADB5DA00158FF9 /* Pod_Asset_BMPlayer.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6A5B61CF1EADB5DA00158FF9 /* Pod_Asset_BMPlayer.xcassets */; };
 		6A6FDBA61DF19AB3003727BC /* NVActivityIndicatorView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A6FDBA21DF19A39003727BC /* NVActivityIndicatorView.framework */; };
 		6A6FDBA71DF19AB3003727BC /* SnapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A6FDBA31DF19A39003727BC /* SnapKit.framework */; };
+		ABE2115D27D8515000E9C047 /* BMPlayerDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE2115C27D8515000E9C047 /* BMPlayerDownloader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		6A5B61CF1EADB5DA00158FF9 /* Pod_Asset_BMPlayer.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Pod_Asset_BMPlayer.xcassets; sourceTree = "<group>"; };
 		6A6FDBA21DF19A39003727BC /* NVActivityIndicatorView.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NVActivityIndicatorView.framework; path = Carthage/Build/iOS/NVActivityIndicatorView.framework; sourceTree = "<group>"; };
 		6A6FDBA31DF19A39003727BC /* SnapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SnapKit.framework; path = Carthage/Build/iOS/SnapKit.framework; sourceTree = "<group>"; };
+		ABE2115C27D8515000E9C047 /* BMPlayerDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BMPlayerDownloader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +87,7 @@
 				6A5B61CD1EADB5DA00158FF9 /* BMTimeSlider.swift */,
 				6A5B61CE1EADB5DA00158FF9 /* Info.plist */,
 				6A5B61CF1EADB5DA00158FF9 /* Pod_Asset_BMPlayer.xcassets */,
+				ABE2115C27D8515000E9C047 /* BMPlayerDownloader.swift */,
 			);
 			path = Source;
 			sourceTree = SOURCE_ROOT;
@@ -151,6 +154,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 6A302EDE1DF199F700AD54B6;
@@ -179,6 +183,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ABE2115D27D8515000E9C047 /* BMPlayerDownloader.swift in Sources */,
 				6A5B61D41EADB5DA00158FF9 /* BMPlayerItem.swift in Sources */,
 				6A5B61D81EADB5DA00158FF9 /* BMSubtitles.swift in Sources */,
 				6A53E1971FB1A54300928FA3 /* BMPlayerManager.swift in Sources */,

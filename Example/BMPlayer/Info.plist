@@ -43,5 +43,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save video to photos</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Save video</string>
 </dict>
 </plist>

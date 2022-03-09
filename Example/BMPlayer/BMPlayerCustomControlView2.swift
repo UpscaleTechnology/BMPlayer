@@ -28,7 +28,7 @@ class BMPlayerCustomControlView2: BMPlayerControlView {
         totalTimeLabel.removeFromSuperview()
         
         timeSlider.removeFromSuperview()
-        fullscreenButton.removeFromSuperview()
+        downloadButton.removeFromSuperview()
         
         // If needs to change position remake the constraint
         progressView.snp.remakeConstraints { (make) in

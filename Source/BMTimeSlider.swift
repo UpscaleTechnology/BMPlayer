@@ -24,3 +24,4 @@ public class BMTimeSlider: UISlider {
         return newRect
     }
 }
+

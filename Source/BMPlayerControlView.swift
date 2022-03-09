@@ -10,7 +10,7 @@ import UIKit
 import NVActivityIndicatorView
 
 
-@objc public protocol BMPlayerControlViewDelegate: class {
+@objc public protocol BMPlayerControlViewDelegate: AnyObject {
     /**
      call when control view choose a definition
      
@@ -90,6 +90,11 @@ open class BMPlayerControlView: UIView {
     /// load progress view
     open var progressView = UIProgressView()
     
+    /// download progress view
+    open var downloadProgressView = CircularProgressBarView()
+    
+    open var isDownloading: Bool = false
+    
     /* play button
      playButton.isSelected = player.isPlaying
      */
@@ -98,7 +103,7 @@ open class BMPlayerControlView: UIView {
     /* fullScreen button
      fullScreenButton.isSelected = player.isFullscreen
      */
-    open var fullscreenButton = UIButton(type: UIButton.ButtonType.custom)
+    open var downloadButton = UIButton(type: UIButton.ButtonType.custom)
     
     open var subtitleLabel    = UILabel()
     open var subtitleBackView = UIView()
@@ -130,8 +135,8 @@ open class BMPlayerControlView: UIView {
         timeSlider.value      = Float(currentTime) / Float(totalTime)
         showSubtile(from: resource?.subtitle, at: currentTime)
     }
-
-
+    
+    
     /**
      change subtitle resource
      
@@ -239,27 +244,30 @@ open class BMPlayerControlView: UIView {
      - parameter isShow: is to show the controlview
      */
     open func controlViewAnimation(isShow: Bool) {
+        
+        if isDownloading { return }
+        
         let alpha: CGFloat = isShow ? 1.0 : 0.0
         self.isMaskShowing = isShow
         
         UIApplication.shared.setStatusBarHidden(!isShow, with: .fade)
         
         UIView.animate(withDuration: 0.3, animations: {[weak self] in
-          guard let wSelf = self else { return }
-          wSelf.topMaskView.alpha    = alpha
-          wSelf.bottomMaskView.alpha = alpha
-          wSelf.mainMaskView.backgroundColor = UIColor(white: 0, alpha: isShow ? 0.4 : 0.0)
-
-          if isShow {
-              if wSelf.isFullscreen { wSelf.chooseDefinitionView.alpha = 1.0 }
-          } else {
-              wSelf.replayButton.isHidden = true
-              wSelf.chooseDefinitionView.snp.updateConstraints { (make) in
-                  make.height.equalTo(35)
-              }
-              wSelf.chooseDefinitionView.alpha = 0.0
-          }
-          wSelf.layoutIfNeeded()
+            guard let wSelf = self else { return }
+            wSelf.topMaskView.alpha    = alpha
+            wSelf.bottomMaskView.alpha = alpha
+            wSelf.mainMaskView.backgroundColor = UIColor(white: 0, alpha: isShow ? 0.4 : 0.0)
+            
+            if isShow {
+                if wSelf.isFullscreen { wSelf.chooseDefinitionView.alpha = 1.0 }
+            } else {
+                wSelf.replayButton.isHidden = true
+                wSelf.chooseDefinitionView.snp.updateConstraints { (make) in
+                    make.height.equalTo(35)
+                }
+                wSelf.chooseDefinitionView.alpha = 0.0
+            }
+            wSelf.layoutIfNeeded()
         }) { [weak self](_) in
             if isShow {
                 self?.autoFadeOutControlViewWithAnimation()
@@ -274,7 +282,6 @@ open class BMPlayerControlView: UIView {
      */
     open func updateUI(_ isForFullScreen: Bool) {
         isFullscreen = isForFullScreen
-        fullscreenButton.isSelected = isForFullScreen
         chooseDefinitionView.isHidden = !BMPlayerConf.enableChooseDefinition || !isForFullScreen
         if isForFullScreen {
             if BMPlayerConf.topBarShowInCase.rawValue == 2 {
@@ -324,7 +331,7 @@ open class BMPlayerControlView: UIView {
             DispatchQueue.global(qos: .default).async { [weak self] in
                 let data = try? Data(contentsOf: url)
                 DispatchQueue.main.async(execute: { [weak self] in
-                  guard let `self` = self else { return }
+                    guard let `self` = self else { return }
                     if let data = data {
                         self.maskImageView.image = UIImage(data: data)
                     } else {
@@ -363,7 +370,7 @@ open class BMPlayerControlView: UIView {
             chooseDefinitionView.addSubview(button)
             button.addTarget(self, action: #selector(self.onDefinitionSelected(_:)), for: UIControl.Event.touchUpInside)
             button.snp.makeConstraints({ [weak self](make) in
-                guard let `self` = self else { return }
+                guard self != nil else { return }
                 make.top.equalTo(chooseDefinitionView.snp.top).offset(35 * i)
                 make.width.equalTo(50)
                 make.height.equalTo(25)
@@ -388,18 +395,28 @@ open class BMPlayerControlView: UIView {
      - parameter button: action Button
      */
     @objc open func onButtonPressed(_ button: UIButton) {
-      autoFadeOutControlViewWithAnimation()
-      if let type = ButtonType(rawValue: button.tag) {
-        switch type {
-        case .play, .replay:
-          if playerLastState == .playedToTheEnd {
-            hidePlayToTheEndView()
-          }
-        default:
-          break
+        autoFadeOutControlViewWithAnimation()
+        if let type = ButtonType(rawValue: button.tag) {
+            switch type {
+            case .play, .replay:
+                if playerLastState == .playedToTheEnd {
+                    hidePlayToTheEndView()
+                }
+            case .download:
+                downloadButton.isHidden = true
+                bottomWrapperView.addSubview(downloadProgressView)
+                downloadProgressView.snp.makeConstraints { [unowned self](make) in
+                    make.width.equalTo(30)
+                    make.height.equalTo(30)
+                    make.centerY.equalTo(self.currentTimeLabel)
+                
+                    make.right.equalTo(-8)
+                }
+            default:
+                break
+            }
         }
-      }
-      delegate?.controlView(controlView: self, didPressButton: button)
+        delegate?.controlView(controlView: self, didPressButton: button)
     }
     
     /**
@@ -427,20 +444,20 @@ open class BMPlayerControlView: UIView {
     
     // MARK: - handle UI slider actions
     @objc func progressSliderTouchBegan(_ sender: UISlider)  {
-      delegate?.controlView(controlView: self, slider: sender, onSliderEvent: .touchDown)
+        delegate?.controlView(controlView: self, slider: sender, onSliderEvent: .touchDown)
     }
     
     @objc func progressSliderValueChanged(_ sender: UISlider)  {
-      hidePlayToTheEndView()
-      cancelAutoFadeOutAnimation()
-      let currentTime = Double(sender.value) * totalDuration
-      currentTimeLabel.text = BMPlayer.formatSecondsToString(currentTime)
-      delegate?.controlView(controlView: self, slider: sender, onSliderEvent: .valueChanged)
+        hidePlayToTheEndView()
+        cancelAutoFadeOutAnimation()
+        let currentTime = Double(sender.value) * totalDuration
+        currentTimeLabel.text = BMPlayer.formatSecondsToString(currentTime)
+        delegate?.controlView(controlView: self, slider: sender, onSliderEvent: .valueChanged)
     }
     
     @objc func progressSliderTouchEnded(_ sender: UISlider)  {
-      autoFadeOutControlViewWithAnimation()
-      delegate?.controlView(controlView: self, slider: sender, onSliderEvent: .touchUpInside)
+        autoFadeOutControlViewWithAnimation()
+        delegate?.controlView(controlView: self, slider: sender, onSliderEvent: .touchUpInside)
     }
     
     
@@ -543,7 +560,7 @@ open class BMPlayerControlView: UIView {
         bottomWrapperView.addSubview(totalTimeLabel)
         bottomWrapperView.addSubview(progressView)
         bottomWrapperView.addSubview(timeSlider)
-        bottomWrapperView.addSubview(fullscreenButton)
+        bottomWrapperView.addSubview(downloadButton)
         
         playButton.tag = BMPlayerControlView.ButtonType.play.rawValue
         playButton.setImage(BMImageResourcePath("Pod_Asset_BMPlayer_play"),  for: .normal)
@@ -581,10 +598,9 @@ open class BMPlayerControlView: UIView {
         progressView.tintColor      = UIColor ( red: 1.0, green: 1.0, blue: 1.0, alpha: 0.6 )
         progressView.trackTintColor = UIColor ( red: 1.0, green: 1.0, blue: 1.0, alpha: 0.3 )
         
-        fullscreenButton.tag = BMPlayerControlView.ButtonType.fullscreen.rawValue
-        fullscreenButton.setImage(BMImageResourcePath("Pod_Asset_BMPlayer_fullscreen"),    for: .normal)
-        fullscreenButton.setImage(BMImageResourcePath("Pod_Asset_BMPlayer_portialscreen"), for: .selected)
-        fullscreenButton.addTarget(self, action: #selector(onButtonPressed(_:)), for: .touchUpInside)
+        downloadButton.tag = BMPlayerControlView.ButtonType.download.rawValue
+        downloadButton.setImage(BMImageResourcePath("Pod_Asset_BMPlayer_fullscreen"),    for: .normal)
+        downloadButton.addTarget(self, action: #selector(onButtonPressed(_:)), for: .touchUpInside)
         
         mainMaskView.addSubview(loadingIndicator)
         
@@ -632,7 +648,7 @@ open class BMPlayerControlView: UIView {
         maskImageView.snp.makeConstraints { [unowned self](make) in
             make.edges.equalTo(self.mainMaskView)
         }
-
+        
         topMaskView.snp.makeConstraints { [unowned self](make) in
             make.top.left.right.equalTo(self.mainMaskView)
         }
@@ -640,11 +656,11 @@ open class BMPlayerControlView: UIView {
         topWrapperView.snp.makeConstraints { [unowned self](make) in
             make.height.equalTo(50)
             if #available(iOS 11.0, *) {
-              make.top.left.right.equalTo(self.topMaskView.safeAreaLayoutGuide)
-              make.bottom.equalToSuperview()
+                make.top.left.right.equalTo(self.topMaskView.safeAreaLayoutGuide)
+                make.bottom.equalToSuperview()
             } else {
-              make.top.equalToSuperview().offset(15)
-              make.bottom.left.right.equalToSuperview()
+                make.top.equalToSuperview().offset(15)
+                make.bottom.left.right.equalToSuperview()
             }
         }
         
@@ -655,17 +671,17 @@ open class BMPlayerControlView: UIView {
         bottomWrapperView.snp.makeConstraints { [unowned self](make) in
             make.height.equalTo(50)
             if #available(iOS 11.0, *) {
-              make.bottom.left.right.equalTo(self.bottomMaskView.safeAreaLayoutGuide)
-              make.top.equalToSuperview()
+                make.bottom.left.right.equalTo(self.bottomMaskView.safeAreaLayoutGuide)
+                make.top.equalToSuperview()
             } else {
-              make.edges.equalToSuperview()
+                make.edges.equalToSuperview()
             }
         }
         
         // Top views
         backButton.snp.makeConstraints { (make) in
-          make.width.height.equalTo(50)
-          make.left.bottom.equalToSuperview()
+            make.width.height.equalTo(50)
+            make.left.bottom.equalToSuperview()
         }
         
         titleLabel.snp.makeConstraints { [unowned self](make) in
@@ -709,8 +725,8 @@ open class BMPlayerControlView: UIView {
             make.left.equalTo(self.timeSlider.snp.right).offset(5)
             make.width.equalTo(40)
         }
-    
-        fullscreenButton.snp.makeConstraints { [unowned self](make) in
+        
+        downloadButton.snp.makeConstraints { [unowned self](make) in
             make.width.equalTo(50)
             make.height.equalTo(50)
             make.centerY.equalTo(self.currentTimeLabel)
@@ -740,12 +756,12 @@ open class BMPlayerControlView: UIView {
             make.left.equalTo(self.seekToViewImage.snp.right).offset(10)
             make.centerY.equalTo(self.seekToView.snp.centerY)
         }
-
+        
         replayButton.snp.makeConstraints { [unowned self](make) in
             make.center.equalTo(self.mainMaskView)
             make.width.height.equalTo(50)
         }
-
+        
         subtitleBackView.snp.makeConstraints { [unowned self](make) in
             make.bottom.equalTo(self.snp.bottom).offset(-5)
             make.centerX.equalTo(self.snp.centerX)
@@ -766,3 +782,81 @@ open class BMPlayerControlView: UIView {
     }
 }
 
+@IBDesignable open class CircularProgressBarView: UIControl {
+    @IBInspectable var mainColor: UIColor = UIColor.gray {
+        didSet {
+            self.setNeedsDisplay()
+        }
+    }
+    
+    @IBInspectable var forgroundColor: UIColor = UIColor.white {
+        didSet {
+            self.setNeedsDisplay()
+        }
+    }
+    
+    @IBInspectable var progress: CGFloat = 0.0 {
+        didSet {
+            self.setNeedsDisplay()
+        }
+    }
+    
+    lazy var backLayer: CAShapeLayer? = {
+        let layer = CAShapeLayer()
+        layer.strokeColor = mainColor.cgColor
+        layer.fillColor = UIColor.clear.cgColor
+        layer.lineWidth = 2.0
+        return layer
+    }()
+    
+    lazy var foreLayer: CAShapeLayer? = {
+        let layer = CAShapeLayer()
+        layer.strokeColor = forgroundColor.cgColor
+        layer.fillColor = UIColor.clear.cgColor
+        layer.lineWidth = 2.0
+        layer.lineCap = .round
+        return layer
+    }()
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.backgroundColor = .clear
+        self.layer.addSublayer(self.backLayer!)
+        self.layer.addSublayer(self.foreLayer!)
+    }
+    
+    required public init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        self.backgroundColor = .clear
+        self.layer.addSublayer(self.backLayer!)
+        self.layer.addSublayer(self.foreLayer!)
+        self.mainColor = UIColor.gray
+        self.forgroundColor = UIColor.blue
+        self.progress = 0.3
+    }
+    
+    open override func awakeFromNib() {
+        self.mainColor = UIColor.gray
+        self.forgroundColor = UIColor.blue
+        self.progress = 0.3
+    }
+    
+    open override func draw(_ rect: CGRect) {
+        self.backLayer?.frame = self.bounds.inset(by: UIEdgeInsets(top: 1, left: 1, bottom: 1, right: 1))
+        self.foreLayer?.frame = self.bounds.inset(by: UIEdgeInsets(top: 1, left: 1, bottom: 1, right: 1))
+        self.backLayer?.strokeColor = mainColor.cgColor
+        self.foreLayer?.strokeColor = forgroundColor.cgColor
+        
+        let circle = UIBezierPath.init(ovalIn: self.backLayer!.bounds)
+        self.backLayer?.path = circle.cgPath
+        
+        let center = CGPoint.init(x: self.foreLayer!.frame.size.width / 2,
+                                  y: self.foreLayer!.frame.size.height / 2)
+        let start = 0 - CGFloat(Double.pi / 2)
+        let end = CGFloat(Double.pi) * 2 * progress - CGFloat(Double.pi / 2)
+        let arc = UIBezierPath.init(arcCenter: center,
+                                    radius: self.foreLayer!.frame.size.width / 2,
+                                    startAngle: start, endAngle: end, clockwise: true)
+        self.foreLayer!.path = arc.cgPath
+    }
+}
