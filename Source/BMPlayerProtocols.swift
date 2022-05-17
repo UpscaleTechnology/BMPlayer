@@ -16,6 +16,7 @@ extension BMPlayerControlView {
         case fullscreen = 105
         case replay     = 106
         case download   = 107
+        case more       = 108
     }
 }
 

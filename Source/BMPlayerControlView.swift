@@ -78,6 +78,7 @@ open class BMPlayerControlView: UIView {
     open var backButton = UIButton(type : UIButton.ButtonType.custom)
     open var titleLabel = UILabel()
     open var chooseDefinitionView = UIView()
+    open var moreButton = UIButton(type : UIButton.ButtonType.custom)
     
     /// bottom view
     open var bottomWrapperView = UIView()
@@ -542,10 +543,15 @@ open class BMPlayerControlView: UIView {
         topWrapperView.addSubview(backButton)
         topWrapperView.addSubview(titleLabel)
         topWrapperView.addSubview(chooseDefinitionView)
+        topWrapperView.addSubview(moreButton)
         
         backButton.tag = BMPlayerControlView.ButtonType.back.rawValue
         backButton.setImage(BMImageResourcePath("Pod_Asset_BMPlayer_back"), for: .normal)
         backButton.addTarget(self, action: #selector(onButtonPressed(_:)), for: .touchUpInside)
+        
+        moreButton.tag = BMPlayerControlView.ButtonType.more.rawValue
+        moreButton.setImage(BMImageResourcePath("Pod_Asset_BMPlayer_43"), for: .normal)
+        moreButton.addTarget(self, action: #selector(onButtonPressed(_:)), for: .touchUpInside)
         
         titleLabel.textColor = UIColor.white
         titleLabel.text      = ""
@@ -694,6 +700,11 @@ open class BMPlayerControlView: UIView {
             make.top.equalTo(self.titleLabel.snp.top).offset(-4)
             make.width.equalTo(60)
             make.height.equalTo(30)
+        }
+        
+        moreButton.snp.makeConstraints { (make) in
+            make.width.height.equalTo(50)
+            make.right.bottom.equalToSuperview()
         }
         
         // Bottom views

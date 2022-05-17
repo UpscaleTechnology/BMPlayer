@@ -38,6 +38,8 @@ open class BMPlayer: UIView {
     
     open var downloadBlock:((String) -> Void)?
     
+    open var moreBlock:((String) -> Void)?
+    
     /// Gesture to change volume / brightness
     open var panGesture: UIPanGestureRecognizer!
     
@@ -567,6 +569,9 @@ extension BMPlayer: BMPlayerControlViewDelegate {
                 controlView.downloadProgressView.isHidden = false
                 controlView.controlViewAnimation(isShow: true)
                 downloadBlock?(resource.definitions[currentDefinition].url.absoluteString)
+                
+            case .more:
+                moreBlock?(resource.definitions[currentDefinition].url.absoluteString)
                 
             default:
                 print("[Error] unhandled Action")
