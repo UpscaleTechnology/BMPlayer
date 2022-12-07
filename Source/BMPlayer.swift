@@ -425,8 +425,8 @@ open class BMPlayer: UIView {
             make.edges.equalTo(self)
         }
         
-        panGesture = UIPanGestureRecognizer(target: self, action: #selector(self.panDirection(_:)))
-        self.addGestureRecognizer(panGesture)
+//        panGesture = UIPanGestureRecognizer(target: self, action: #selector(self.panDirection(_:)))
+//        self.addGestureRecognizer(panGesture)
     }
     
     fileprivate func initUIData() {
