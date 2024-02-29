@@ -40,6 +40,12 @@ open class BMPlayer: UIView {
     
     open var moreBlock:((String) -> Void)?
     
+    open var didPauseBlock:((TimeInterval) -> Void)?
+    
+    open var didPlayBlock:((TimeInterval) -> Void)?
+    
+    open var didSeekBlock:((TimeInterval, TimeInterval) -> Void)?
+    
     /// Gesture to change volume / brightness
    // open var panGesture: UIPanGestureRecognizer!
     
@@ -168,6 +174,7 @@ open class BMPlayer: UIView {
 //        panGesture.isEnabled = true
         playerLayer?.play()
         isPauseByUser = false
+        
     }
     
     /**
@@ -187,6 +194,8 @@ open class BMPlayer: UIView {
      */
     open func seek(_ to:TimeInterval, completion: (()->Void)? = nil) {
         playerLayer?.seek(to: to, completion: completion)
+        didSeekBlock?(currentPosition, to)
+        
     }
     
     /**
@@ -545,6 +554,7 @@ extension BMPlayer: BMPlayerControlViewDelegate {
             case .play:
                 if button.isSelected {
                     pause()
+                    didPauseBlock?(currentPosition)
                 } else {
                     if isPlayToTheEnd {
                         seek(0, completion: {[weak self] in
@@ -554,6 +564,7 @@ extension BMPlayer: BMPlayerControlViewDelegate {
                         isPlayToTheEnd = false
                     }
                     play()
+                    didPlayBlock?(currentPosition)
                 }
                 
             case .replay:
