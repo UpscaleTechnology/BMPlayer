@@ -40,6 +40,7 @@ class VideoPlayViewController: UIViewController {
         preparePlayer()
         setupPlayerResource()
         
+        
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(applicationDidEnterBackground),
                                                name: UIApplication.didEnterBackgroundNotification,
@@ -49,6 +50,18 @@ class VideoPlayViewController: UIViewController {
                                                selector: #selector(applicationWillEnterForeground),
                                                name: UIApplication.willEnterForegroundNotification,
                                                object: nil)
+        
+        player.didPauseBlock = { [weak self] second in
+            print("did pause \(second)")
+        }
+        
+        player.didPlayBlock = { [weak self] second in
+            print("did play \(second)")
+        }
+        
+        player.didSeekBlock = { [weak self] from, to in
+            print("did seek \(from) to \(to)")
+        }
     }
     
     @objc func applicationWillEnterForeground() {
@@ -138,10 +151,7 @@ class VideoPlayViewController: UIViewController {
             
             let subtitle = BMSubtitles(url: str)
             
-            let asset = BMPlayerResource(name: "Video Name Here",
-                                         definitions: [BMPlayerResourceDefinition(url: url, definition: "480p")],
-                                         cover: nil,
-                                         subtitles: subtitle)
+            let asset = BMPlayerResource(url: url)
             
             // How to change subtiles
             //            delay(5, completion: {
@@ -167,7 +177,7 @@ class VideoPlayViewController: UIViewController {
             //                }
             //            })
             //
-            player.seek(30)
+//            player.seek(30)
             player.setVideo(resource: asset)
             changeButton.isHidden = false
             
@@ -180,7 +190,7 @@ class VideoPlayViewController: UIViewController {
             player.setVideo(resource: asset)
             
         case (2,0):
-            player.panGesture.isEnabled = false
+//            player.panGesture.isEnabled = false
             let asset = self.preparePlayerItem()
             player.setVideo(resource: asset)
             
@@ -247,7 +257,7 @@ class VideoPlayViewController: UIViewController {
     
     func resetPlayerManager() {
         BMPlayerConf.allowLog = false
-        BMPlayerConf.shouldAutoPlay = true
+//        BMPlayerConf.shouldAutoPlay = true
         BMPlayerConf.tintColor = UIColor.white
         BMPlayerConf.topBarShowInCase = .always
         BMPlayerConf.loaderType  = NVActivityIndicatorType.ballRotateChase

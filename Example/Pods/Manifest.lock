@@ -1,14 +1,14 @@
 PODS:
-  - BMPlayer/CacheSupport (1.3.0):
+  - BMPlayer/CacheSupport (1.3.2):
     - BMPlayer/Core
     - NVActivityIndicatorView (~> 4.7.0)
     - SnapKit (~> 5.0.0)
     - VIMediaCache
-  - BMPlayer/Core (1.3.0)
+  - BMPlayer/Core (1.3.2)
   - NVActivityIndicatorView (4.7.0):
     - NVActivityIndicatorView/Presenter (= 4.7.0)
   - NVActivityIndicatorView/Presenter (4.7.0)
-  - SnapKit (5.0.0)
+  - SnapKit (5.0.1)
   - SwipeBack (1.1.1)
   - VIMediaCache (0.4)
 
@@ -17,7 +17,7 @@ DEPENDENCIES:
   - SwipeBack
 
 SPEC REPOS:
-  https://github.com/cocoapods/specs.git:
+  https://github.com/CocoaPods/Specs.git:
     - NVActivityIndicatorView
     - SnapKit
     - SwipeBack
@@ -28,12 +28,12 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  BMPlayer: 92a1c2a721694ba6ab107661e7aff670909671c6
+  BMPlayer: e4b241bd088644d7b89d991a1a65d1b1615d19b3
   NVActivityIndicatorView: b19ddab2576f805cbe0fb2306cba3476e09a1dea
-  SnapKit: fd22d10eb9aff484d79a8724eab922c1ddf89bcf
+  SnapKit: 97b92857e3df3a0c71833cce143274bf6ef8e5eb
   SwipeBack: d6759601b40da1f4161033feb30ab475d7d04322
   VIMediaCache: aa650f82cb114c68a343beb4e67416cf5eb2f3a2
 
-PODFILE CHECKSUM: 8d8c62882064f74fa5f1c85343d9ba80417cc081
+PODFILE CHECKSUM: f542f8e2f86cf44f93833d01f943e7a409c2d7d0
 
-COCOAPODS: 1.6.1
+COCOAPODS: 1.14.3
