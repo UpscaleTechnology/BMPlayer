@@ -163,7 +163,7 @@ open class BMPlayerControlView: UIView {
         resource?.subtitle = subtitles
         
         // Update CC button visibility based on subtitle availability
-        ccButton.isHidden = subtitles == nil
+//        ccButton.isHidden = subtitles == nil
         if subtitles != nil {
             subtitlesEnabled = true
         }
@@ -236,7 +236,7 @@ open class BMPlayerControlView: UIView {
         prepareChooseDefinitionView()
         
         // Show/hide CC button based on subtitle availability
-        ccButton.isHidden = resource.subtitle == nil
+//        ccButton.isHidden = resource.subtitle == nil
         subtitlesEnabled = resource.subtitle != nil
         
         autoFadeOutControlViewWithAnimation()
@@ -442,14 +442,44 @@ open class BMPlayerControlView: UIView {
                     make.width.equalTo(30)
                     make.height.equalTo(30)
                     make.centerY.equalTo(self.currentTimeLabel)
-                
                     make.right.equalTo(-8)
                 }
             case .cc:
-                subtitlesEnabled.toggle()
-                // If subtitles are disabled, hide the subtitle view immediately
-                if !subtitlesEnabled {
-                    subtitleBackView.isHidden = true
+                if resource?.subtitle == nil {
+                    // No subtitles, show toast and do not enable
+                    ccButton.isSelected = false
+                    if let view = self.window ?? self.superview {
+                        let toast = UILabel()
+                        toast.text = "No subtitles available"
+                        toast.textColor = .white
+                        toast.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+                        toast.textAlignment = .center
+                        toast.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+                        toast.layer.cornerRadius = 8
+                        toast.clipsToBounds = true
+                        toast.alpha = 0
+                        view.addSubview(toast)
+                        toast.snp.makeConstraints { make in
+                            make.centerX.equalTo(view)
+                            make.bottom.equalTo(view).offset(-100)
+                            make.width.lessThanOrEqualTo(view).offset(-40)
+                        }
+                        UIView.animate(withDuration: 0.3, animations: {
+                            toast.alpha = 1
+                        }) { _ in
+                            UIView.animate(withDuration: 0.3, delay: 1.2, options: [], animations: {
+                                toast.alpha = 0
+                            }) { _ in
+                                toast.removeFromSuperview()
+                            }
+                        }
+                    }
+                } else {
+                    subtitlesEnabled.toggle()
+                    // If subtitles are disabled, hide the subtitle view immediately
+                    if !subtitlesEnabled {
+                        subtitleBackView.isHidden = true
+                    }
                 }
             default:
                 break
@@ -521,7 +551,7 @@ open class BMPlayerControlView: UIView {
     
     open func updateSubtitlePosition() {
         let videoContentRect = videoRect()
-        let subtitleOffset: CGFloat = 10 // Distance from bottom of video content
+        let subtitleOffset: CGFloat = isAudioFile() ? 150 : 10 // 50 for audio, 10 for video
         
         // Calculate subtitle position relative to video content
         let subtitleY = videoContentRect.maxY - subtitleOffset
@@ -546,7 +576,7 @@ open class BMPlayerControlView: UIView {
         let isLongSubtitle = lines.count > 2 || text.count > 100
         
         let videoContentRect = videoRect()
-        let baseOffset: CGFloat = 10 // Base distance from bottom of video content
+        let baseOffset: CGFloat = isAudioFile() ? 150 : 10 // 50 for audio, 10 for video
         let longSubtitleOffset: CGFloat = 40 // Additional offset for long subtitles
         
         let subtitleOffset = isLongSubtitle ? baseOffset + longSubtitleOffset : baseOffset
@@ -632,8 +662,8 @@ open class BMPlayerControlView: UIView {
         // Main mask view
         addSubview(mainMaskView)
         mainMaskView.addSubview(topMaskView)
-        mainMaskView.addSubview(bottomMaskView)
         mainMaskView.addSubview(subtitleBackView)
+        mainMaskView.addSubview(bottomMaskView)
         mainMaskView.insertSubview(maskImageView, at: 0)
         mainMaskView.clipsToBounds = true
         mainMaskView.backgroundColor = UIColor(white: 0, alpha: 0.4 )
@@ -683,7 +713,6 @@ open class BMPlayerControlView: UIView {
         totalTimeLabel.font         = UIFont.systemFont(ofSize: 12)
         totalTimeLabel.text         = "00:00"
         totalTimeLabel.textAlignment   = NSTextAlignment.center
-        
         
         timeSlider.maximumValue = 1.0
         timeSlider.minimumValue = 0.0
@@ -856,7 +885,7 @@ open class BMPlayerControlView: UIView {
             make.width.equalTo(25)
             make.height.equalTo(25)
             make.centerY.equalTo(self.currentTimeLabel)
-            make.left.equalTo(self.totalTimeLabel.snp.right)
+            make.left.equalTo(self.totalTimeLabel.snp.right).offset(5)
         }
         
         downloadButton.snp.makeConstraints { [unowned self](make) in
@@ -1001,6 +1030,12 @@ open class BMPlayerControlView: UIView {
         }
         
         return CGRect(x: contentX, y: contentY, width: contentSize.width, height: contentSize.height)
+    }
+
+    // Helper to check if file is audio
+    private func isAudioFile() -> Bool {
+        guard let ext = resource?.definitions.first?.url.pathExtension.lowercased() else { return false }
+        return ["mp3", "m4a", "flac", "wav", "wma", "aac"].contains(ext)
     }
 }
 
