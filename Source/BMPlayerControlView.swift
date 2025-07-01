@@ -106,9 +106,25 @@ open class BMPlayerControlView: UIView {
      */
     open var downloadButton = UIButton(type: UIButton.ButtonType.custom)
     
+    /* CC button for subtitle control
+     ccButton.isSelected = subtitlesEnabled
+     */
+    open var ccButton = UIButton(type: UIButton.ButtonType.custom)
+    
     open var subtitleLabel    = UILabel()
     open var subtitleBackView = UIView()
     open var subtileAttribute: [NSAttributedString.Key : Any]?
+    
+    /// Subtitle state management
+    open var subtitlesEnabled: Bool = true {
+        didSet {
+            ccButton.isSelected = subtitlesEnabled
+            if !subtitlesEnabled {
+                subtitleBackView.isHidden = true
+            }
+            customizeUIComponents()
+        }
+    }
     
     /// Activty Indector for loading
     open var loadingIndicator  = NVActivityIndicatorView(frame:  CGRect(x: 0, y: 0, width: 30, height: 30))
@@ -145,6 +161,12 @@ open class BMPlayerControlView: UIView {
      */
     open func update(subtitles: BMSubtitles?) {
         resource?.subtitle = subtitles
+        
+        // Update CC button visibility based on subtitle availability
+        ccButton.isHidden = subtitles == nil
+        if subtitles != nil {
+            subtitlesEnabled = true
+        }
     }
     
     /**
@@ -161,6 +183,8 @@ open class BMPlayerControlView: UIView {
         switch state {
         case .readyToPlay:
             hideLoader()
+            // Update subtitle position when video is ready
+            updateSubtitlePosition()
             
         case .buffering:
             showLoader()
@@ -210,6 +234,11 @@ open class BMPlayerControlView: UIView {
         self.selectedIndex = index
         titleLabel.text = resource.name
         prepareChooseDefinitionView()
+        
+        // Show/hide CC button based on subtitle availability
+        ccButton.isHidden = resource.subtitle == nil
+        subtitlesEnabled = resource.subtitle != nil
+        
         autoFadeOutControlViewWithAnimation()
     }
     
@@ -297,6 +326,9 @@ open class BMPlayerControlView: UIView {
                 topMaskView.isHidden = false
             }
         }
+        
+        // Update subtitle position when UI changes
+        updateSubtitlePosition()
     }
     
     /**
@@ -413,6 +445,12 @@ open class BMPlayerControlView: UIView {
                 
                     make.right.equalTo(-8)
                 }
+            case .cc:
+                subtitlesEnabled.toggle()
+                // If subtitles are disabled, hide the subtitle view immediately
+                if !subtitlesEnabled {
+                    subtitleBackView.isHidden = true
+                }
             default:
                 break
             }
@@ -464,13 +502,65 @@ open class BMPlayerControlView: UIView {
     
     // MARK: - private functions
     fileprivate func showSubtile(from subtitle: BMSubtitles?, at time: TimeInterval) {
-        if let subtitle = subtitle, let group = subtitle.search(for: time) {
+        print("[BMPlayer] showSubtile called at time: \(time), subtitle: \(subtitle != nil)")
+        if let subtitle = subtitle, let group = subtitle.search(for: time), subtitlesEnabled {
+            print("[BMPlayer] Subtitle found: \(group.text)")
             subtitleBackView.isHidden = false
-            subtitleLabel.attributedText = NSAttributedString(string: group.text,
-                                                              attributes: subtileAttribute)
+            subtitleLabel.text = group.text
+            
+            // Update subtitle position based on video content bounds
+            updateSubtitlePosition()
+            
+            // Adjust subtitle positioning for long text
+            adjustSubtitlePosition(for: group.text)
         } else {
+            print("[BMPlayer] No subtitle for this time.")
             subtitleBackView.isHidden = true
         }
+    }
+    
+    open func updateSubtitlePosition() {
+        let videoContentRect = videoRect()
+        let subtitleOffset: CGFloat = 10 // Distance from bottom of video content
+        
+        // Calculate subtitle position relative to video content
+        let subtitleY = videoContentRect.maxY - subtitleOffset
+        
+        print("[BMPlayer] Video content rect: \(videoContentRect)")
+        print("[BMPlayer] Subtitle Y position: \(subtitleY)")
+        
+        // Update subtitle constraints to use absolute positioning
+        subtitleBackView.snp.remakeConstraints { [unowned self](make) in
+            make.centerX.equalTo(self.snp.centerX)
+            make.bottom.equalTo(self.snp.top).offset(subtitleY)
+            make.width.lessThanOrEqualTo(self.snp.width).offset(-10)
+        }
+        
+        // No animation, update immediately
+        self.layoutIfNeeded()
+    }
+    
+    private func adjustSubtitlePosition(for text: String) {
+        // Calculate if subtitle is long (more than 2 lines)
+        let lines = text.components(separatedBy: .newlines)
+        let isLongSubtitle = lines.count > 2 || text.count > 100
+        
+        let videoContentRect = videoRect()
+        let baseOffset: CGFloat = 10 // Base distance from bottom of video content
+        let longSubtitleOffset: CGFloat = 40 // Additional offset for long subtitles
+        
+        let subtitleOffset = isLongSubtitle ? baseOffset + longSubtitleOffset : baseOffset
+        let subtitleY = videoContentRect.maxY - subtitleOffset
+        
+        // Update subtitle constraints to use absolute positioning
+        subtitleBackView.snp.remakeConstraints { [unowned self](make) in
+            make.centerX.equalTo(self.snp.centerX)
+            make.bottom.equalTo(self.snp.top).offset(subtitleY)
+            make.width.lessThanOrEqualTo(self.snp.width).offset(-10)
+        }
+        
+        // No animation, update immediately
+        self.layoutIfNeeded()
     }
     
     @objc fileprivate func onDefinitionSelected(_ button:UIButton) {
@@ -511,29 +601,39 @@ open class BMPlayerControlView: UIView {
     
     /// Add Customize functions here
     open func customizeUIComponents() {
-        
+        // Update CC button style for ON (enabled)
+        if subtitlesEnabled {
+            ccButton.backgroundColor = UIColor.white
+            ccButton.setTitleColor(UIColor.black, for: .normal)
+            ccButton.setTitleColor(UIColor.black, for: .selected)
+            ccButton.layer.borderWidth = 0
+        } else {
+            // OFF (disabled)
+            ccButton.backgroundColor = UIColor.clear
+            ccButton.setTitleColor(UIColor.white, for: .normal)
+            ccButton.setTitleColor(UIColor.white, for: .selected)
+            ccButton.layer.borderWidth = 2
+            ccButton.layer.borderColor = UIColor.white.cgColor
+        }
     }
     
     func setupUIComponents() {
-        // Subtile view
+        // Subtile view setup
         subtitleLabel.numberOfLines = 0
         subtitleLabel.textAlignment = .center
         subtitleLabel.textColor = UIColor.white
-        subtitleLabel.adjustsFontSizeToFitWidth = true
-        subtitleLabel.minimumScaleFactor = 0.5
-        subtitleLabel.font = UIFont.systemFont(ofSize: 13)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         
-        subtitleBackView.layer.cornerRadius = 2
-        subtitleBackView.backgroundColor = UIColor.black.withAlphaComponent(0.4)
+        subtitleBackView.layer.cornerRadius = 4
+        subtitleBackView.backgroundColor = UIColor.black.withAlphaComponent(0.6)
         subtitleBackView.addSubview(subtitleLabel)
         subtitleBackView.isHidden = true
-        
-        addSubview(subtitleBackView)
         
         // Main mask view
         addSubview(mainMaskView)
         mainMaskView.addSubview(topMaskView)
         mainMaskView.addSubview(bottomMaskView)
+        mainMaskView.addSubview(subtitleBackView)
         mainMaskView.insertSubview(maskImageView, at: 0)
         mainMaskView.clipsToBounds = true
         mainMaskView.backgroundColor = UIColor(white: 0, alpha: 0.4 )
@@ -566,6 +666,7 @@ open class BMPlayerControlView: UIView {
         bottomWrapperView.addSubview(totalTimeLabel)
         bottomWrapperView.addSubview(progressView)
         bottomWrapperView.addSubview(timeSlider)
+        bottomWrapperView.addSubview(ccButton)
         bottomWrapperView.addSubview(downloadButton)
         
         playButton.tag = BMPlayerControlView.ButtonType.play.rawValue
@@ -607,6 +708,19 @@ open class BMPlayerControlView: UIView {
         downloadButton.tag = BMPlayerControlView.ButtonType.download.rawValue
         downloadButton.setImage(BMImageResourcePath("Pod_Asset_BMPlayer_fullscreen"),    for: .normal)
         downloadButton.addTarget(self, action: #selector(onButtonPressed(_:)), for: .touchUpInside)
+        
+        ccButton.tag = BMPlayerControlView.ButtonType.cc.rawValue
+        ccButton.setTitle("CC", for: .normal)
+        ccButton.setTitle("CC", for: .selected)
+        ccButton.titleLabel?.font = UIFont.systemFont(ofSize: 10, weight: .medium)
+        ccButton.setTitleColor(UIColor.white.withAlphaComponent(0.6), for: .normal)
+        ccButton.setTitleColor(UIColor.white, for: .selected)
+        ccButton.backgroundColor = UIColor.clear
+        ccButton.layer.cornerRadius = 4
+        ccButton.layer.borderWidth = 1
+        ccButton.layer.borderColor = UIColor.white.withAlphaComponent(1).cgColor
+        ccButton.addTarget(self, action: #selector(onButtonPressed(_:)), for: .touchUpInside)
+        ccButton.isSelected = subtitlesEnabled
         
         mainMaskView.addSubview(loadingIndicator)
         
@@ -691,8 +805,9 @@ open class BMPlayerControlView: UIView {
         }
         
         titleLabel.snp.makeConstraints { [unowned self](make) in
-            make.left.equalTo(self.backButton.snp.right)
+            make.left.equalTo(self.backButton.snp.right).offset(10)
             make.centerY.equalTo(self.backButton)
+            make.right.lessThanOrEqualTo(self.chooseDefinitionView.snp.left).offset(-10)
         }
         
         chooseDefinitionView.snp.makeConstraints { [unowned self](make) in
@@ -737,11 +852,18 @@ open class BMPlayerControlView: UIView {
             make.width.equalTo(40)
         }
         
+        ccButton.snp.makeConstraints { [unowned self](make) in
+            make.width.equalTo(25)
+            make.height.equalTo(25)
+            make.centerY.equalTo(self.currentTimeLabel)
+            make.left.equalTo(self.totalTimeLabel.snp.right)
+        }
+        
         downloadButton.snp.makeConstraints { [unowned self](make) in
             make.width.equalTo(50)
             make.height.equalTo(50)
             make.centerY.equalTo(self.currentTimeLabel)
-            make.left.equalTo(self.totalTimeLabel.snp.right)
+            make.left.equalTo(self.ccButton.snp.right)
             make.right.equalToSuperview()
         }
         
@@ -774,9 +896,9 @@ open class BMPlayerControlView: UIView {
         }
         
         subtitleBackView.snp.makeConstraints { [unowned self](make) in
-            make.bottom.equalTo(self.snp.bottom).offset(-5)
             make.centerX.equalTo(self.snp.centerX)
-            make.width.lessThanOrEqualTo(self.snp.width).offset(-10).priority(750)
+            make.bottom.equalTo(self.snp.top).offset(0)
+            make.width.lessThanOrEqualTo(self.snp.width).offset(-10)
         }
         
         subtitleLabel.snp.makeConstraints { [unowned self](make) in
@@ -790,6 +912,95 @@ open class BMPlayerControlView: UIView {
     fileprivate func BMImageResourcePath(_ fileName: String) -> UIImage? {
         let bundle = Bundle(for: BMPlayer.self)
         return UIImage(named: fileName, in: bundle, compatibleWith: nil)
+    }
+    
+    // MARK: - Video content bounds calculation
+    
+    /**
+     Calculate the actual video content bounds within the player view
+     This accounts for video aspect ratio, letterboxing, and pillarboxing
+     */
+    open func videoRect() -> CGRect {
+        guard let player = player,
+              let playerLayer = player.playerLayer,
+              let currentItem = playerLayer.player?.currentItem else {
+            return bounds
+        }
+        
+        guard let track = currentItem.asset.tracks(withMediaType: .video).first else {
+            return bounds
+        }
+        
+        // Get video natural size
+        let videoSize = track.naturalSize
+        
+        // Get player view size
+        let playerViewSize = bounds.size
+        
+        // Calculate aspect ratios
+        let videoRatio = videoSize.width / videoSize.height
+        let playerRatio = playerViewSize.width / playerViewSize.height
+        
+        var contentSize: CGSize
+        var contentX: CGFloat
+        var contentY: CGFloat
+        
+        // Calculate content bounds based on video gravity
+        switch playerLayer.videoGravity {
+        case .resizeAspect:
+            // Maintain aspect ratio, may have letterboxing/pillarboxing
+            if playerRatio > videoRatio {
+                // Player is wider than video - pillarboxing
+                contentSize = CGSize(
+                    width: videoSize.width * playerViewSize.height / videoSize.height,
+                    height: playerViewSize.height
+                )
+                contentX = (playerViewSize.width - contentSize.width) / 2
+                contentY = 0
+            } else {
+                // Player is taller than video - letterboxing
+                contentSize = CGSize(
+                    width: playerViewSize.width,
+                    height: videoSize.height * playerViewSize.width / videoSize.width
+                )
+                contentX = 0
+                contentY = (playerViewSize.height - contentSize.height) / 2
+            }
+            
+        case .resizeAspectFill:
+            // Fill the player view, may crop video
+            if playerRatio > videoRatio {
+                // Player is wider - crop video width
+                contentSize = CGSize(
+                    width: playerViewSize.width,
+                    height: videoSize.height * playerViewSize.width / videoSize.width
+                )
+                contentX = 0
+                contentY = (playerViewSize.height - contentSize.height) / 2
+            } else {
+                // Player is taller - crop video height
+                contentSize = CGSize(
+                    width: videoSize.width * playerViewSize.height / videoSize.height,
+                    height: playerViewSize.height
+                )
+                contentX = (playerViewSize.width - contentSize.width) / 2
+                contentY = 0
+            }
+            
+        case .resize:
+            // Stretch to fill - no letterboxing/pillarboxing
+            contentSize = playerViewSize
+            contentX = 0
+            contentY = 0
+            
+        default:
+            // Fallback to player bounds
+            contentSize = playerViewSize
+            contentX = 0
+            contentY = 0
+        }
+        
+        return CGRect(x: contentX, y: contentY, width: contentSize.width, height: contentSize.height)
     }
 }
 
@@ -871,3 +1082,4 @@ open class BMPlayerControlView: UIView {
         self.foreLayer!.path = arc.cgPath
     }
 }
+

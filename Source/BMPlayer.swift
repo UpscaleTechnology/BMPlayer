@@ -626,3 +626,4 @@ extension BMPlayer: BMPlayerControlViewDelegate {
         self.playerLayer?.player?.rate = rate
     }
 }
+

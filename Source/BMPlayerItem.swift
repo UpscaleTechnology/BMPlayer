@@ -61,7 +61,10 @@ open class BMPlayerResourceDefinition {
     
     open var avURLAsset: AVURLAsset {
         get {
-            return AVURLAsset(url: url)
+            guard !url.isFileURL, url.pathExtension != "m3u8" else {
+                return AVURLAsset(url: url)
+            }
+            return BMPlayerManager.asset(for: self)
         }
     }
     
@@ -86,3 +89,4 @@ open class BMPlayerResourceDefinition {
         self.options    = options
     }
 }
+

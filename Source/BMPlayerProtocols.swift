@@ -17,6 +17,7 @@ extension BMPlayerControlView {
         case replay     = 106
         case download   = 107
         case more       = 108
+        case cc         = 109
     }
 }
 
@@ -30,3 +31,4 @@ extension BMPlayer {
         return String(format: "%02d:%02d", min, sec)
     }
 }
+

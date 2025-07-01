@@ -45,6 +45,7 @@ public class BMSubtitles {
     }
     
     public init(url: URL, encoding: String.Encoding? = nil) {
+        print("[BMSubtitles] Loading subtitles from: \(url)")
         DispatchQueue.global(qos: .background).async {[weak self] in
             do {
                 let string: String
@@ -54,6 +55,7 @@ public class BMSubtitles {
                     string = try String(contentsOf: url)
                 }
                 self?.groups = BMSubtitles.parseSubRip(string) ?? []
+                print("[BMSubtitles] Loaded \(self?.groups.count ?? 0) subtitle groups")
             } catch {
                 print("| BMPlayer | [Error] failed to load \(url.absoluteString) \(error.localizedDescription)")
             }
@@ -69,10 +71,9 @@ public class BMSubtitles {
      */
     public func search(for time: TimeInterval) -> Group? {
         let result = groups.first(where: { group -> Bool in
-            if group.start - delay <= time && group.end - delay >= time {
-                return true
-            }
-            return false
+            let startTime = group.start - delay
+            let endTime = group.end - delay
+            return startTime <= time && endTime >= time
         })
         return result
     }
@@ -86,37 +87,61 @@ public class BMSubtitles {
      */
     fileprivate static func parseSubRip(_ payload: String) -> [Group]? {
         var groups: [Group] = []
-        let scanner = Scanner(string: payload)
-        while !scanner.isAtEnd {
-            var indexString: NSString?
-            scanner.scanUpToCharacters(from: .newlines, into: &indexString)
-            
-            var startString: NSString?
-            scanner.scanUpTo(" --> ", into: &startString)
-            
-            // skip spaces and newlines by default.
-            scanner.scanString("-->", into: nil)
-            
-            var endString: NSString?
-            scanner.scanUpToCharacters(from: .newlines, into: &endString)
-            
-            var textString: NSString?
-            scanner.scanUpTo("\r\n\r\n", into: &textString)
-            
-            if let text = textString {
-                textString = text.trimmingCharacters(in: .whitespaces) as NSString
-                textString = text.replacingOccurrences(of: "\r", with: "") as NSString
+        let lines = payload.components(separatedBy: .newlines)
+        var i = 0
+        
+        while i < lines.count {
+            // Skip empty lines
+            while i < lines.count && lines[i].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                i += 1
             }
             
-            if let indexString = indexString,
-                let index = Int(indexString as String),
-                let start = startString,
-                let end   = endString,
-                let text  = textString {
-                let group = Group(index, start, end, text)
+            if i >= lines.count { break }
+            
+            // Get subtitle index
+            let indexString = lines[i].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !indexString.isEmpty,
+                  let index = Int(indexString) else {
+                i += 1
+                continue
+            }
+            i += 1
+            
+            if i >= lines.count { break }
+            
+            // Get time line
+            let timeLine = lines[i].trimmingCharacters(in: .whitespacesAndNewlines)
+            let timeComponents = timeLine.components(separatedBy: " --> ")
+            
+            guard timeComponents.count == 2,
+                  let startString = timeComponents.first?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let endString = timeComponents.last?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                i += 1
+                continue
+            }
+            i += 1
+            
+            // Get subtitle text (can be multiple lines)
+            var textLines: [String] = []
+            while i < lines.count {
+                let line = lines[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                if line.isEmpty {
+                    break
+                }
+                textLines.append(line)
+                i += 1
+            }
+            
+            let text = textLines.joined(separator: "\n")
+            
+            if !text.isEmpty {
+                let group = Group(index, startString as NSString, endString as NSString, text as NSString)
                 groups.append(group)
             }
         }
+        
+        print("[BMSubtitles] Successfully parsed \(groups.count) subtitle groups")
         return groups
     }
 }
+
